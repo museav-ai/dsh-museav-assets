@@ -4,35 +4,26 @@ A **Museav** workspace for DeepSeek Harness: browse featured inspiration and ava
 
 Open **Museav** from the global left sidebar. The previous session-specific Assets tab is no longer registered. Existing projects and generation records remain available through the local **museav CLI**. Featured inspiration comes from MUSE AV's public API; the platform automatically selects the model for each generation.
 
-## Install
+## Platform images
 
-> **Package name: `@dsh-plugins/dsh-museav-assets`** (same scope as the three sibling plugins).
-> The unscoped `dsh-museav-assets` was a one-off name published by mistake; it was **unpublished**
-> on 2026-10-02. Use the scoped name only.
+Choose Xiaohongshu, X (Twitter), or Xianyu in the Studio. Enter one brief, select the images you want, and generate them together.
 
-On the desktop app, install it from the app's **plugin manager** (it pulls from npm) — the CLI
-cannot write to the `desktop` profile
-(`profile "desktop" is managed exclusively by the Electron application`).
+| Platform | Default images |
+| --- | --- |
+| Xiaohongshu | 3:4 post cover, content image, and summary page |
+| X (Twitter) | 16:9 landscape hero and 1:1 square companion |
+| Xianyu | 1:1 listing photo, product details, and condition image |
 
-Local development (try your changes in the desktop app):
+For Xianyu, select a real product photo from the project library first. The Studio shows each image's result and lets you retry failed images. Freeform generation and personal templates are still available. The workspace follows DSH's light or dark theme.
+
+## Install in DSH Web
 
 ```sh
-npm run deploy     # gate → backup → install into ~/.dsh/profiles/desktop/ (refuses if the gate fails)
-npm run rollback   # if the app won't start; rollback:npm reinstalls the npm release
+dsh plugin --profile web add @dsh-plugins/dsh-museav-assets
+dsh --profile web
 ```
 
-See [../SOP.md](../SOP.md). On first install, also add the package to the profile (`~/.dsh/profiles/desktop/package.json`):
-
-```jsonc
-"dependencies": { "dsh-museav-assets": "^0.1.0" },
-"dsh": { "profile": { "bundles": [ /* … */, "dsh-museav-assets" ] } }
-```
-
-Changing profile config is a topology change: **quit and reopen the desktop app** (`~/.dsh/restart.sh` is retired — it now detects the missing 3080 service and exits 1).
-(never `launchctl kickstart` directly).
-
-Only prerequisite: the local `museav` CLI is logged in (`museav login`).
-The plugin never reads or forwards the token in `~/.museav.json`.
+Restart any running Web server to load the plugin, then open **Museav** from the sidebar. On the machine running DSH, sign in to the local `museav` CLI with `museav login` to generate images and use project assets.
 
 ## Endpoints
 
@@ -43,6 +34,7 @@ The plugin never reads or forwards the token in `~/.museav.json`.
 | `POST /api/dsh-museav-assets/projects` | `{name}` create a workspace (≤20 chars) |
 | `GET /api/dsh-museav-assets/assets?project=<id\|name>` | Assets in that workspace |
 | `GET /api/dsh-museav-assets/jobs?limit=<n>` | Recent generation records |
+| `POST /api/dsh-museav-assets/gen` | Generate one image and archive it to the selected project |
 
 Failure semantics: any upstream/CLI error returns **200 + `{ok:false,error}`** so the tab
 can render the reason inline; only invalid parameters return 400. One flaky request
@@ -70,17 +62,10 @@ output captured from the real CLI.
 > commands in museav-cli removes the fragility for good — the source of truth there is
 > `~/dev/muse/museav-cli/src/commands/projects.ts`, a different repo.
 
-## Non-goals
-
-- No generation, no uploads — that is the CLI/MCP's job; a second implementation only
-  creates two places to drift
-- No caching — the data is cheap and the state moves; add a cache if it is ever needed
-- No polling — one fetch on mount, then only when the user hits Refresh
-
 ## Tests
 
 ```sh
-npm run check && npm test   # 28: 12 parsing contract + 8 routes + 8 UI
+npm run build:client && npm run check && npm test
 ```
 
 Route tests substitute a stub executable for the CLI (via the `MUSEAW_BIN` environment

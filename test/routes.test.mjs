@@ -438,3 +438,14 @@ test('POST /gen 校验 prompt/模板二选一，并把比例白名单挡住', as
   assert.equal(good.status, 200)
   assert.equal(good.body.ok, true)
 })
+
+test('需要实拍的模板缺少可读参考图时不会调用出图 CLI', async (t) => {
+  const { call, restore } = await boot(stubBin)
+  t.after(restore)
+  const response = await call('/api/dsh-museav-assets/gen', {
+    method: 'POST',
+    body: { prompt: '商品主图', ratio: '1:1', refs: ['未上传'], requireRefs: true },
+  })
+  assert.equal(response.status, 400)
+  assert.equal(response.body.code, 'REFERENCE_UNAVAILABLE')
+})

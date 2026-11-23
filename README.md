@@ -32,33 +32,26 @@
 
 插件在全局侧栏注册「Museav」，点击后在主区打开独立工作台。原会话顶部的「资产」Tab 不再注册；已有项目、素材和生成记录仍由原 CLI 数据源提供。
 
-## 装
+## 平台配图
 
-> **包名 `@dsh-plugins/dsh-museav-assets`**（与另外三个插件同一 scope）。
-> `dsh-museav-assets`（无 scope）是走错路时发过一版的临时名 —— **已于 2026-10-02 撤回**（unpublish），
-> 请只用本名。教训：新插件一开始就用 scope 名，别先发无 scope 再撤回（撤回的名字 24 小时后任何人都能抢）。
+在出图台选择小红书、X（推特）或闲鱼，写一次简报，勾选所需配图，再点「一键出图」。
 
-桌面端在**应用内的插件管理**里装 —— 它从 npm 拉。命令行装不进 `desktop` profile
-（`profile "desktop" is managed exclusively by the Electron application`）。
+| 平台 | 默认配图 |
+| --- | --- |
+| 小红书 | 3:4 笔记封面、内容配图、总结页 |
+| X（推特） | 16:9 横版主图和 1:1 方形配图 |
+| 闲鱼 | 1:1 商品主图、商品细节、成色说明 |
 
-本地开发（改完代码装进桌面端试）：
+闲鱼需先从项目素材库选一张商品实拍。每张图显示自己的出图结果，失败时可以只重试失败的图。自由出图和个人模板仍在同一个出图台。工作台随 DSH 切换浅色和深色。
+
+## Web 安装
 
 ```sh
-npm run deploy     # 门禁 → 备份 → 装进 ~/.dsh/profiles/desktop/（不过门禁不部署）
-npm run rollback   # 起不来时恢复上一份；rollback:npm 装回 npm 正式版
+dsh plugin --profile web add @dsh-plugins/dsh-museav-assets
+dsh --profile web
 ```
 
-流程细节见 [../SOP.md](../SOP.md)「怎么测 / 怎么部署 / 怎么回滚」。首次安装还需把包名加进 profile（`~/.dsh/profiles/desktop/package.json`）：
-
-```jsonc
-"dependencies": { "@dsh-plugins/dsh-museav-assets": "^0.1.1" },
-"dsh": { "profile": { "bundles": [ /* … */, "@dsh-plugins/dsh-museav-assets" ] } }
-```
-
-拓扑级变更要重启：桌面端是**退出并重开 app**（`~/.dsh/restart.sh` 已作废，现在探测不到 3080 服务会直接以 1 退出）。
-
-前置条件只有一条：本机 `museav` CLI 已登录（`museav login`）。
-插件自己**不读也不转发** `~/.museav.json` 里的 token。
+如果 Web 服务已打开，重启后从全局侧栏进入「Museav」。出图与项目素材使用运行 DSH 的主机上已登录的 `museav` CLI（`museav login`）。
 
 ## 接口
 
@@ -69,6 +62,7 @@ npm run rollback   # 起不来时恢复上一份；rollback:npm 装回 npm 正�
 | `POST /api/dsh-museav-assets/projects` | `{name}` 新建工作区（≤20 字） |
 | `GET /api/dsh-museav-assets/assets?project=<id\|名>` | 该工作区的素材库 |
 | `GET /api/dsh-museav-assets/jobs?limit=<n>` | 最近出图记录 |
+| `POST /api/dsh-museav-assets/gen` | 单张出图并按所选项目归档 |
 
 失败语义：**上游/CLI 出错一律 200 + `{ok:false,error}`**，tab 内联显示原因；
 只有参数不合法才 400。一次网络抖动不该让 tab 变白屏。
@@ -93,16 +87,10 @@ stdout/stderr 分工就是它的脚本契约：
 > stderr 表格里解析。给 museav-cli 这两个命令加 `--json` 就能把这条脆点彻底消掉 ——
 > 真源在 `~/dev/muse/museav-cli/src/commands/projects.ts`，改的是上游仓，不是本插件。
 
-## 不做什么
-
-- 不出图、不传文件 —— 那是 CLI / MCP 的活，重复实现只会两处漂移
-- 不缓存 —— 数据便宜，状态随时在变；想要缓存再加
-- 不轮询 —— 挂载时拉一次，用户点「刷新」才重跑
-
 ## 测试
 
 ```sh
-npm run check && npm test   # 28 个：解析契约 12 + 路由 8 + UI 8
+npm run build:client && npm run check && npm test
 ```
 
 路由测试用 stub 可执行文件顶替 CLI（走 `MUSEAW_BIN` 环境变量），**全程不联网、不碰真账号**。
